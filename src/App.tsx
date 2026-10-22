@@ -45,6 +45,8 @@ export interface AppProps {
   initialFocus?: Focus;
   // Se llama justo antes de salir cuando hay que abrir claude en esta terminal
   onLaunch: (req: LaunchRequest) => void;
+  // ^K: salir a la configuración (cuentas y preferencias)
+  onConfig?: () => void;
   // Eventos del ratón, si la terminal los manda
   mouse?: EventEmitter | null;
 }
@@ -94,7 +96,7 @@ function inFolder(s: SessionRecord, row: FolderRow): boolean {
   return row.exact ? normalizePath(s.cwd) === normalizePath(row.path) : isInside(s.cwd, row.path);
 }
 
-const App: React.FC<AppProps> = ({ extraArgs, initialFolder, initialFocus = CONVS, onLaunch, mouse }) => {
+const App: React.FC<AppProps> = ({ extraArgs, initialFolder, initialFocus = CONVS, onLaunch, onConfig, mouse }) => {
   const { exit } = useApp();
   const { cols, rows } = useTerminalSize();
   const accounts = useMemo(() => getAccounts(), []);
@@ -472,6 +474,12 @@ const App: React.FC<AppProps> = ({ extraArgs, initialFolder, initialFocus = CONV
         case 'a':
           cycleAccount();
           break;
+        case 'k':
+          if (onConfig) {
+            onConfig();
+            exit();
+          }
+          break;
         case 'e':
           toggleFavorite();
           break;
@@ -735,9 +743,9 @@ const App: React.FC<AppProps> = ({ extraArgs, initialFolder, initialFocus = CONV
   const hints: Array<[string, keyof Messages]> = confirm
     ? [['f', 'kForkOpen'], ['↵', 'kOpenAnyway'], ['esc', 'kCancel']]
     : focus === FOLDERS
-      ? [['→', filterRow?.expandible && !filterRow.expandido ? 'kExpand' : 'kColumn'], ['↵', 'colConvs'], ['^N', 'kNew'], ['^T', 'kTab'], ['^E', 'kFav'], ['^A', 'kAccount'], ['esc', query ? 'kSearchClear' : 'kBack']]
+      ? [['→', filterRow?.expandible && !filterRow.expandido ? 'kExpand' : 'kColumn'], ['↵', 'colConvs'], ['^N', 'kNew'], ['^T', 'kTab'], ['^E', 'kFav'], ['^A', 'kAccount'], ['^K', 'kConfig'], ['esc', query ? 'kSearchClear' : 'kBack']]
       : focus === CONVS
-        ? [['↵', 'kOpen'], ['^T', 'kTab'], ['^N', 'kNew'], ['^F', 'kFork'], ['^E', 'kFav'], ['^G', 'kGoFolder'], ['^A', 'kAccount'], ['esc', query ? 'kSearchClear' : 'kBack']]
+        ? [['↵', 'kOpen'], ['^T', 'kTab'], ['^N', 'kNew'], ['^F', 'kFork'], ['^E', 'kFav'], ['^G', 'kGoFolder'], ['^A', 'kAccount'], ['^K', 'kConfig'], ['esc', query ? 'kSearchClear' : 'kBack']]
         : [['↑↓', 'kScroll'], ['↵', 'kOpen'], ['←', 'kColumn'], ['esc', 'kBack']];
 
   const column = (title: string, focused: boolean, w: number, h: number, lines: Line[]) => (

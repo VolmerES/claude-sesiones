@@ -88,7 +88,7 @@ const Panel: React.FC<PanelProps> = ({ id, mouse }) => {
   const inner = width - 3;
 
   const openLogin = (account: Account) => {
-    const r = runInNewTab({ cwd: HOME, account, extraArgs: [], titulo: `login ${account.nombre}` });
+    const r = runInNewTab({ cwd: HOME, account, extraArgs: ['auth', 'login'], titulo: `login ${account.nombre}` });
     setMsg(r.ok ? { texto: t('panelLoginTab'), color: OK } : { texto: t('panelLoginFailed', { name: account.nombre }), color: ERROR });
   };
 

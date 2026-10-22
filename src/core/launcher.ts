@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 import type { Account } from './accounts.js';
 import { envFor } from './accounts.js';
 import { loadConfig } from './config.js';
-import { IS_WINDOWS } from './paths.js';
+import { HOME, IS_WINDOWS } from './paths.js';
 import { t } from '../i18n.js';
 
 export interface LaunchRequest {
@@ -60,10 +60,42 @@ export function rememberCwd(cwd: string) {
   }
 }
 
-// Ejecuta claude en esta misma terminal y devuelve su código de salida
-export function runHere(req: LaunchRequest): Promise<number> {
+export interface AuthStatus {
+  loggedIn: boolean;
+  email: string | null;
+  // pro, max…
+  plan: string | null;
+}
+
+// Lo que dice «claude auth status» de una cuenta; null si no se ha podido saber
+export function authStatus(account: Account): Promise<AuthStatus | null> {
   const bin = resolveClaude();
-  rememberCwd(req.cwd);
+  return new Promise(done => {
+    let out = '';
+    const child = spawn(bin.cmd, ['auth', 'status', '--json'], { env: envFor(account), stdio: ['ignore', 'pipe', 'ignore'], shell: bin.shell });
+    child.stdout.on('data', (b: Buffer) => (out += b.toString('utf-8')));
+    child.on('error', () => done(null));
+    child.on('close', () => {
+      try {
+        const s = JSON.parse(out) as { loggedIn?: boolean; email?: string; subscriptionType?: string };
+        done({ loggedIn: Boolean(s.loggedIn), email: s.email ?? null, plan: s.subscriptionType ?? null });
+      } catch {
+        done(null);
+      }
+    });
+  });
+}
+
+// «claude auth login» o «logout» con una cuenta, en esta terminal
+export function runAuth(account: Account, action: 'login' | 'logout'): Promise<number> {
+  return runHere({ cwd: HOME, account, extraArgs: ['auth', action], titulo: action }, false);
+}
+
+// Ejecuta claude en esta misma terminal y devuelve su código de salida. «remember»: que
+// la shell acabe en su carpeta al salir de cses
+export function runHere(req: LaunchRequest, remember = true): Promise<number> {
+  const bin = resolveClaude();
+  if (remember) rememberCwd(req.cwd);
   return new Promise(resolve => {
     const child = spawn(bin.cmd, claudeArgs(req), { cwd: req.cwd, env: envFor(req.account), stdio: 'inherit', shell: bin.shell });
     // Ctrl+C es para claude, no para cses, que solo espera

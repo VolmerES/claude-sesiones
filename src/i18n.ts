@@ -97,12 +97,46 @@ const es = {
   cliNewIn: 'Nueva conversación en',
   cliAccount: 'cuenta',
   cliNoAccount: 'No hay ninguna cuenta «{name}». Mira: cses cuentas',
-  cliLogin: 'Abriendo claude con «{name}» ({dir}). Si no te lo pide solo, escribe /login.',
+  cliLogin: 'Iniciando sesión en «{name}» ({dir}). Se abre el navegador; si entra solo en otra cuenta, abre el enlace en una ventana de incógnito.',
   cliNewAccountUsage: 'Uso: cses cuenta-nueva NOMBRE',
   cliNewAccountNext: 'Ahora: cses login {name}',
   cliShared: 'historial compartido con {names}',
   cliLaunchFailed: 'cses: no se pudo lanzar claude: {msg}',
   cliSwitching: 'Siguiendo con la cuenta {name}…',
+
+  setupTitle: 'Configuración',
+  setupWelcome: 'Es la primera vez que abres cses. Deja aquí listas tus cuentas de Claude y tus preferencias. Vuelves cuando quieras con ^K o con «cses config».',
+  setupAccounts: 'Cuentas de Claude',
+  setupAccountsIntro: 'Inicia sesión una vez en cada cuenta. Después cses cambia de una a otra sin volver a hacer /login.',
+  setupNoSession: 'sin sesión · ↵ para entrar',
+  setupSame: '⚠ misma cuenta que {name}',
+  setupChecking: 'comprobando…',
+  setupAddAccount: '+ Añadir cuenta',
+  setupAccountName: 'Nombre de la cuenta (trabajo, personal…):',
+  setupPrefs: 'Preferencias',
+  setupDefaultAccount: 'Cuenta por defecto',
+  setupLanguage: 'Idioma',
+  setupPanel: 'Panel de cuentas junto a claude',
+  setupMouse: 'Ratón',
+  setupTerminal: 'Pestañas nuevas en',
+  setupAuto: 'automático',
+  setupYes: 'sí',
+  setupNo: 'no',
+  setupTermWindow: 'ventana nueva',
+  setupRoots: 'Carpetas raíz: salen siempre arriba en el árbol',
+  setupAddRoot: '+ Añadir carpeta',
+  setupRootPrompt: 'Ruta de la carpeta:',
+  setupRules: 'Reglas: con qué cuenta se abre cada carpeta',
+  setupAddRule: '+ Añadir regla',
+  setupRulePrompt: 'Carpeta de la regla:',
+  setupKeys: '↑↓ moverse · ←→ cambiar · ↵ elegir · s cerrar sesión · d quitar · esc guardar y salir',
+  setupInputKeys: '↵ aceptar · esc cancelar',
+  setupLogoutConfirm: 'Pulsa s otra vez para cerrar la sesión de «{name}»',
+  setupNoFolder: 'No existe {path}',
+  setupLoggingIn: 'Iniciando sesión en «{name}» ({dir}).',
+  setupLoggingInHint: 'Se abre el navegador: entra con la cuenta que quieras usar como «{name}». Si entra solo en otra, abre el enlace en una ventana de incógnito.',
+  setupLoggingOut: 'Cerrando la sesión de «{name}»…',
+  kConfig: 'ajustes',
 
   panelTitle: 'Cuentas',
   panelInUse: 'en uso',
@@ -114,7 +148,7 @@ const es = {
   panelAdd: '+ Añadir cuenta',
   panelAddPrompt: 'Nombre de la cuenta nueva:',
   panelAddHint: '↵ crear · esc cancelar',
-  panelLoginTab: 'Inicia sesión en la pestaña nueva con /login',
+  panelLoginTab: 'Inicia sesión en la pestaña nueva (se abre el navegador)',
   panelLoginFailed: 'No se pudo abrir otra pestaña. Usa: cses login {name}',
   panelConfirmBusy: 'Claude está respondiendo. Clic otra vez para cortarlo y cambiar',
   panelLimitBanner: '⚠ Límite alcanzado',
@@ -139,7 +173,8 @@ Uso:
   cses lista [N]             Las N últimas, sin interfaz (20 por defecto)
   cses cuentas               Cuentas detectadas y si comparten historial
   cses cuenta-nueva NOMBRE   Crea ~/.claude-NOMBRE compartiendo historial y ajustes
-  cses login NOMBRE          Abre claude con esa cuenta para iniciar sesión
+  cses login NOMBRE          Inicia sesión en esa cuenta (se abre el navegador)
+  cses config                Cuentas y preferencias (desde el navegador: ^K)
 
 Lo que no sea de cses (por ejemplo --model opus) se le pasa a claude al abrir.
 Con «--» delante se pasa todo tal cual.
@@ -149,7 +184,8 @@ Columnas: carpetas | conversaciones | vista previa. ← → cambia de columna.
   ↵          abrir (en carpetas: ver sus conversaciones)
   ^T  abrir en pestaña nueva     ^N  nueva conversación     ^F  abrir una copia (fork)
   ^E  favorita                   ^G  ir a su carpeta        ^A  cambiar de cuenta
-  ^Y  copiar el id               ^R  releer                 ^C  salir
+  ^Y  copiar el id               ^R  releer                 ^K  cuentas y ajustes
+  ^C  salir
   Ratón: clic para elegir, doble clic para abrir, rueda para desplazar.
 
 Configuración: ~/.cses/config.json (ver README)`,
@@ -254,12 +290,46 @@ const en: Messages = {
   cliNewIn: 'New conversation in',
   cliAccount: 'account',
   cliNoAccount: 'There is no account "{name}". See: cses accounts',
-  cliLogin: 'Opening claude with "{name}" ({dir}). If it doesn\'t ask on its own, type /login.',
+  cliLogin: 'Logging in to "{name}" ({dir}). Your browser opens; if it signs in to another account by itself, open the link in a private window.',
   cliNewAccountUsage: 'Usage: cses new-account NAME',
   cliNewAccountNext: 'Next: cses login {name}',
   cliShared: 'history shared with {names}',
   cliLaunchFailed: 'cses: could not launch claude: {msg}',
   cliSwitching: 'Continuing with account {name}…',
+
+  setupTitle: 'Settings',
+  setupWelcome: 'First time with cses: set up your Claude accounts and preferences here. Come back any time with ^K or "cses config".',
+  setupAccounts: 'Claude accounts',
+  setupAccountsIntro: 'Log in once to each account. After that cses switches between them without /login.',
+  setupNoSession: 'not logged in · ↵ to log in',
+  setupSame: '⚠ same account as {name}',
+  setupChecking: 'checking…',
+  setupAddAccount: '+ Add account',
+  setupAccountName: 'Account name (work, personal…):',
+  setupPrefs: 'Preferences',
+  setupDefaultAccount: 'Default account',
+  setupLanguage: 'Language',
+  setupPanel: 'Accounts panel next to claude',
+  setupMouse: 'Mouse',
+  setupTerminal: 'Open new tabs in',
+  setupAuto: 'automatic',
+  setupYes: 'yes',
+  setupNo: 'no',
+  setupTermWindow: 'new window',
+  setupRoots: 'Root folders: always at the top of the tree',
+  setupAddRoot: '+ Add folder',
+  setupRootPrompt: 'Folder path:',
+  setupRules: 'Rules: which account each folder opens with',
+  setupAddRule: '+ Add rule',
+  setupRulePrompt: 'Folder for the rule:',
+  setupKeys: '↑↓ move · ←→ change · ↵ select · s log out · d remove · esc save and exit',
+  setupInputKeys: '↵ accept · esc cancel',
+  setupLogoutConfirm: 'Press s again to log "{name}" out',
+  setupNoFolder: '{path} does not exist',
+  setupLoggingIn: 'Logging in to "{name}" ({dir}).',
+  setupLoggingInHint: 'Your browser opens: sign in with the account you want as "{name}". If it signs in to another one by itself, open the link in a private window.',
+  setupLoggingOut: 'Logging "{name}" out…',
+  kConfig: 'settings',
 
   panelTitle: 'Accounts',
   panelInUse: 'in use',
@@ -271,7 +341,7 @@ const en: Messages = {
   panelAdd: '+ Add account',
   panelAddPrompt: 'New account name:',
   panelAddHint: '↵ create · esc cancel',
-  panelLoginTab: 'Log in with /login in the new tab',
+  panelLoginTab: 'Log in from the new tab (your browser opens)',
   panelLoginFailed: 'Could not open another tab. Run: cses login {name}',
   panelConfirmBusy: 'Claude is responding. Click again to stop it and switch',
   panelLimitBanner: '⚠ Limit reached',
@@ -296,7 +366,8 @@ Usage:
   cses list [N]            The last N, without the UI (20 by default)
   cses accounts            Detected accounts and whether they share history
   cses new-account NAME    Create ~/.claude-NAME sharing history and settings
-  cses login NAME          Open claude with that account to log in
+  cses login NAME          Log in to that account (your browser opens)
+  cses config              Accounts and preferences (from the browser: ^K)
 
 Anything that isn't a cses option (e.g. --model opus) is passed to claude.
 Put "--" in front to pass everything through as is.
@@ -306,7 +377,8 @@ Columns: folders | conversations | preview. ← → switch columns.
   ↵          open (on a folder: show its conversations)
   ^T  open in a new tab          ^N  new conversation       ^F  open a fork
   ^E  favorite                   ^G  go to its folder       ^A  switch account
-  ^Y  copy the id                ^R  refresh                ^C  quit
+  ^Y  copy the id                ^R  refresh                ^K  accounts and settings
+  ^C  quit
   Mouse: click to select, double-click to open, wheel to scroll.
 
 Config: ~/.cses/config.json (see README)`,
@@ -314,7 +386,7 @@ Config: ~/.cses/config.json (see README)`,
 
 const CATALOG: Record<Lang, Messages> = { es, en };
 
-function detectLang(): Lang {
+export function detectLang(): Lang {
   const candidates = [process.env.CSES_LANG, process.env.LC_ALL, process.env.LC_MESSAGES, process.env.LANG];
   for (const c of candidates) {
     if (c && c !== 'C' && c !== 'POSIX') return c.toLowerCase().startsWith('es') ? 'es' : 'en';

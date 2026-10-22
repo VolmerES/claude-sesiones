@@ -1,6 +1,8 @@
-import { readFileSync } from 'fs';
-import { configFile, expandHome } from './paths.js';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname } from 'path';
+import { configFile, expandHome, tildePath } from './paths.js';
 import type { Lang } from '../i18n.js';
+import { getLang } from '../i18n.js';
 
 export interface AccountConfig {
   nombre: string;
@@ -28,6 +30,8 @@ export interface CcsConfig {
   raton?: boolean;
   // Panel de cuentas al lado de claude (por defecto, si hay más de una cuenta)
   panelCuentas?: boolean;
+  // Ya se pasó por la configuración inicial
+  configurado?: boolean;
 }
 
 // El fichero admite las claves en castellano o en inglés
@@ -39,6 +43,7 @@ interface RawConfig extends CcsConfig {
   language?: Lang;
   mouse?: boolean;
   accountsPanel?: boolean;
+  configured?: boolean;
 }
 
 let cached: CcsConfig | null = null;
@@ -58,6 +63,7 @@ export function loadConfig(): CcsConfig {
       idioma: raw.idioma ?? raw.language,
       raton: raw.raton ?? raw.mouse,
       panelCuentas: raw.panelCuentas ?? raw.accountsPanel,
+      configurado: raw.configurado ?? raw.configured,
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -66,4 +72,53 @@ export function loadConfig(): CcsConfig {
     cached = {};
   }
   return cached;
+}
+
+export function configExists(): boolean {
+  try {
+    readFileSync(configFile());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Guarda la configuración con las claves en el idioma de la interfaz y las rutas con «~»
+export function saveConfig(config: CcsConfig) {
+  const en = getLang() === 'en';
+  const paths = (list?: string[]) => list?.map(tildePath);
+  const raw: Record<string, unknown> = en
+    ? {
+        configured: config.configurado,
+        defaultAccount: config.cuentaPorDefecto,
+        roots: paths(config.raices),
+        rules: config.reglas?.map(r => ({ folder: tildePath(r.carpeta), account: r.cuenta })),
+        accounts: config.cuentas?.map(c => ({ name: c.nombre, dir: tildePath(c.dir) })),
+        terminal: config.terminal === 'ventana' ? 'window' : config.terminal,
+        language: config.idioma,
+        mouse: config.raton,
+        accountsPanel: config.panelCuentas,
+      }
+    : {
+        configurado: config.configurado,
+        cuentaPorDefecto: config.cuentaPorDefecto,
+        raices: paths(config.raices),
+        reglas: config.reglas?.map(r => ({ carpeta: tildePath(r.carpeta), cuenta: r.cuenta })),
+        cuentas: config.cuentas?.map(c => ({ nombre: c.nombre, dir: tildePath(c.dir) })),
+        terminal: config.terminal,
+        idioma: config.idioma,
+        raton: config.raton,
+        panelCuentas: config.panelCuentas,
+      };
+  // Lo que no se ha tocado no se escribe
+  for (const k of Object.keys(raw)) if (raw[k] === undefined) delete raw[k];
+  mkdirSync(dirname(configFile()), { recursive: true });
+  writeFileSync(configFile(), `${JSON.stringify(raw, null, 2)}\n`);
+  cached = { ...config };
+}
+
+// Olvida lo leído: la próxima vez se lee del fichero
+export function reloadConfig(): CcsConfig {
+  cached = null;
+  return loadConfig();
 }

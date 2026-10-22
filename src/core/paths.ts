@@ -37,6 +37,12 @@ export function shortPath(p: string): string {
   return inHome ? fwd.slice(prefix.length) : fwd;
 }
 
+// Ruta para guardar en la configuración: con «~» si está en la carpeta personal
+export function tildePath(p: string): string {
+  const short = shortPath(p);
+  return short === '~' || short === p.replace(/\\/g, '/') ? short : `~/${short}`;
+}
+
 export function lastSegment(p: string): string {
   const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/);
   return parts[parts.length - 1] || p;

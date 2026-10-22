@@ -6,16 +6,18 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import App, { CONVS, FOLDERS } from './App.js';
 import Panel from './Panel.js';
+import Setup from './Setup.js';
+import type { SetupAction } from './Setup.js';
 import { accountLabel, getAccounts } from './core/accounts.js';
 import { createAccount } from './core/accountAdmin.js';
 import { loadConfig } from './core/config.js';
 import { titleOf, updateIndex, visibleSessions } from './core/indexer.js';
 import { runningSessions } from './core/running.js';
 import type { LaunchRequest } from './core/launcher.js';
-import { runHere } from './core/launcher.js';
+import { runAuth } from './core/launcher.js';
 import { decodeSpec, runWithPanel } from './core/supervisor.js';
 import { shortDate } from './core/format.js';
-import { HOME, isInside, shortPath } from './core/paths.js';
+import { isInside, shortPath } from './core/paths.js';
 import { setLang, t } from './i18n.js';
 import { FilteredInput } from './ui/input.js';
 import { fit, fitLeft } from './ui/text.js';
@@ -27,6 +29,7 @@ const SUBCOMMANDS: Record<string, string> = {
   cuentas: 'cuentas', accounts: 'cuentas',
   'cuenta-nueva': 'cuenta-nueva', 'new-account': 'cuenta-nueva',
   login: 'login',
+  config: 'config', configurar: 'config', setup: 'config',
   // Internos: los usa cses para abrir el panel de cuentas y las pestañas nuevas
   _panel: '_panel',
   _run: '_run',
@@ -64,7 +67,7 @@ const claudeArgs = [...(takesArgs ? rest.filter(a => a.startsWith('-')) : rest),
 // Pantalla completa para Ink, con el ratón aparte; al terminar deja la terminal como estaba
 async function fullScreen(build: (mouse: FilteredInput['mouse'] | null) => React.ReactElement): Promise<void> {
   const input = new FilteredInput(process.stdin);
-  const withMouse = config.raton !== false;
+  const withMouse = loadConfig().raton !== false;
   const restoreTerminal = () => {
     input.disableMouse();
     process.stdout.write('\x1b[?1049l\x1b[?25h');
@@ -83,7 +86,42 @@ async function fullScreen(build: (mouse: FilteredInput['mouse'] | null) => React
   input.dispose();
 }
 
+// Cuentas y preferencias. Para iniciar o cerrar sesión se sale de la pantalla, se ejecuta
+// «claude auth» aquí mismo y se vuelve
+async function setupScreen(welcome: boolean): Promise<void> {
+  let first = welcome;
+  for (;;) {
+    let action: SetupAction | null = null;
+    await fullScreen(mouse => (
+      <Setup welcome={first} mouse={mouse} onAction={a => {
+        action = a;
+      }} />
+    ));
+    first = false;
+    const a = action as SetupAction | null;
+    if (!a) return;
+    const account = getAccounts(true).find(x => x.nombre === a.cuenta);
+    if (!account) continue;
+    if (a.kind === 'login') {
+      console.log(`\x1b[38;2;217;119;87m✻\x1b[0m ${t('setupLoggingIn', { name: account.nombre, dir: account.dir })}`);
+      console.log(`\x1b[2m  ${t('setupLoggingInHint', { name: account.nombre })}\x1b[0m\n`);
+    } else {
+      console.log(t('setupLoggingOut', { name: account.nombre }));
+    }
+    await runAuth(account, a.kind);
+  }
+}
+
 async function main(): Promise<number> {
+  if (command === 'config') {
+    if (!process.stdin.isTTY) {
+      console.error(t('cliNeedsTty'));
+      return 2;
+    }
+    await setupScreen(!loadConfig().configurado);
+    return 0;
+  }
+
   if (command === '_panel') {
     if (!commandArgs[0] || !process.stdin.isTTY) return 2;
     await fullScreen(mouse => <Panel id={commandArgs[0]} mouse={mouse} />);
@@ -129,7 +167,7 @@ async function main(): Promise<number> {
       return 2;
     }
     console.log(`${t('cliLogin', { name: account.nombre, dir: account.dir })}\n`);
-    return runHere({ cwd: HOME, account, extraArgs: claudeArgs, titulo: 'login' });
+    return runAuth(account, 'login');
   }
 
   if (command === 'lista') {
@@ -151,18 +189,28 @@ async function main(): Promise<number> {
     console.error(t('cliNeedsTty'));
     return 2;
   }
+  // La primera vez, antes del navegador, la configuración
+  if (!loadConfig().configurado) await setupScreen(true);
   let launchRequest: LaunchRequest | null = null;
-  await fullScreen(mouse => (
-    <App
-      extraArgs={claudeArgs}
-      initialFolder={currentDirOnly ? process.cwd() : null}
-      initialFocus={command === 'carpetas' ? FOLDERS : CONVS}
-      mouse={mouse}
-      onLaunch={req => {
-        launchRequest = req;
-      }}
-    />
-  ));
+  for (;;) {
+    let toConfig = false;
+    await fullScreen(mouse => (
+      <App
+        extraArgs={claudeArgs}
+        initialFolder={currentDirOnly ? process.cwd() : null}
+        initialFocus={command === 'carpetas' ? FOLDERS : CONVS}
+        mouse={mouse}
+        onLaunch={req => {
+          launchRequest = req;
+        }}
+        onConfig={() => {
+          toConfig = true;
+        }}
+      />
+    ));
+    if (!toConfig) break;
+    await setupScreen(false);
+  }
 
   const req = launchRequest as LaunchRequest | null;
   if (!req) return 0;

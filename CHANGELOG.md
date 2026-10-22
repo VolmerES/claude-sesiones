@@ -27,6 +27,9 @@ nombre propio. Lo que hay debajo es el historial de ccresume.
 - Open in a new Windows Terminal or tmux tab (`Ctrl+T`), forks (`Ctrl+F`)
 - `●` for conversations open in another terminal, and a prompt before reopening them
 - `cses list` for use without the UI
+- Settings screen on first run (`cses config`, `Ctrl+K`): log in to each Claude account
+  with `claude auth login`, default account, language, accounts panel, mouse, root
+  folders and per-folder rules; warns about two accounts with the same email
 - Accounts panel next to `claude` (Windows Terminal or tmux): click another account and
   the same conversation reopens with it, without logging in again; marks accounts that
   hit a usage limit and when they come back; "+ Add account"

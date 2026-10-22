@@ -3,12 +3,14 @@
 // Teclas: down up left right tab enter esc slash bs, ^x para Ctrl+x, clic:x:y doble:x:y rueda:x:y,
 // o cualquier carácter suelto
 // Con PANEL=<cuenta> pinta el panel de cuentas como si claude estuviera abierto con esa
-// cuenta (SESSION=<id> para su conversación). Mejor con CSES_DIR en una carpeta temporal
+// cuenta (SESSION=<id> para su conversación). Mejor con CSES_DIR en una carpeta temporal.
+// SETUP=1 (o SETUP=bienvenida, la de la primera vez) pinta la configuración
 import React from 'react';
 import { render } from 'ink-testing-library';
 import { EventEmitter } from 'events';
 import App from '../src/App.js';
 import Panel from '../src/Panel.js';
+import Setup from '../src/Setup.js';
 import { writeState } from '../src/core/panelLink.js';
 const mouse = new EventEmitter();
 const cols = Number(process.env.COLS || 140), rows = Number(process.env.ROWS || 34);
@@ -18,7 +20,7 @@ if (process.env.PANEL) {
     titulo: 'fotograma', historial: [{ cuenta: process.env.PANEL, desde: 0 }],
   });
 }
-const r = render(process.env.PANEL ? <Panel id="fotograma" mouse={mouse} /> : <App extraArgs={[]} initialFolder={process.env.FOLDER ?? null} mouse={mouse} onLaunch={req => console.log(">>> onLaunch", JSON.stringify({ ...req, account: req.account.nombre }))} />);
+const r = render(process.env.SETUP ? <Setup welcome={process.env.SETUP === 'bienvenida'} mouse={mouse} onAction={a => console.log('>>> onAction', JSON.stringify(a))} /> : process.env.PANEL ? <Panel id="fotograma" mouse={mouse} /> : <App extraArgs={[]} initialFolder={process.env.FOLDER ?? null} mouse={mouse} onLaunch={req => console.log(">>> onLaunch", JSON.stringify({ ...req, account: req.account.nombre }))} />);
 // ink-testing-library no deja fijar el tamaño al crear: se ajusta después
 Object.defineProperty(r.stdout, "columns", { get: () => cols }); Object.defineProperty(r.stdout, "rows", { get: () => rows });
 const wait = (ms: number) => new Promise(res => setTimeout(res, ms));

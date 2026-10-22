@@ -109,7 +109,8 @@ cses folders             start in the folder column
 cses list [N]            the last N conversations, no UI
 cses accounts            detected accounts and whether they share history
 cses new-account NAME    create ~/.claude-NAME sharing history and settings
-cses login NAME          open claude with that account to log in
+cses login NAME          log in to that account (your browser opens)
+cses config              accounts and preferences (also Ctrl+K)
 ```
 
 Anything that isn't a `cses` option is passed to `claude`: `cses --model opus`, or
@@ -131,11 +132,20 @@ Anything that isn't a `cses` option is passed to `claude`: `cses --model opus`, 
 | `Ctrl+A` | switch account (cycles back to automatic) | | |
 | `Ctrl+Y` | | copy the session id | |
 | `Ctrl+R` | refresh | refresh | refresh |
+| `Ctrl+K` | accounts and settings | | |
 | `esc` | clear search · back · quit | | |
 | `Tab` | next column | | |
 
 With mouse reporting on, select text in the terminal with `Shift`+drag. Turn the
 mouse off with `"mouse": false` in the config.
+
+## First run: accounts and preferences
+
+The first time you run `cses` it opens its settings screen (later: `Ctrl+K` or
+`cses config`). There you log in to each of your Claude accounts once, with
+`claude auth login`, and pick the default account, the language, the accounts panel,
+the mouse, the root folders and per-folder rules. It warns when two accounts are
+logged in with the same email. Everything is saved as you change it.
 
 ## Several accounts
 
@@ -182,7 +192,8 @@ Turn it off with `"accountsPanel": false`, or on with only one account with `tru
 
 ## Configuration
 
-`~/.cses/config.json` (optional; Spanish keys work too):
+`~/.cses/config.json`, written by the settings screen (you can also edit it; Spanish
+keys work too):
 
 ```json
 {

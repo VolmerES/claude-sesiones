@@ -109,7 +109,8 @@ cses carpetas              empieza en la columna de carpetas
 cses lista [N]             las N últimas, sin interfaz
 cses cuentas               cuentas detectadas y si comparten historial
 cses cuenta-nueva NOMBRE   crea ~/.claude-NOMBRE compartiendo historial y ajustes
-cses login NOMBRE          abre claude con esa cuenta para iniciar sesión
+cses login NOMBRE          inicia sesión en esa cuenta (se abre el navegador)
+cses config                cuentas y preferencias (también Ctrl+K)
 ```
 
 Lo que no sea de `cses` se le pasa a `claude`: `cses --model opus`, o `cses -- …` para
@@ -131,11 +132,20 @@ pasarlo todo tal cual. También valen los nombres en inglés (`list`, `accounts`
 | `Ctrl+A` | cambiar de cuenta (y vuelta a la automática) | | |
 | `Ctrl+Y` | | copiar el id | |
 | `Ctrl+R` | releer | releer | releer |
+| `Ctrl+K` | cuentas y ajustes | | |
 | `esc` | borrar la búsqueda · atrás · salir | | |
 | `Tab` | columna siguiente | | |
 
 Con el ratón activado, para seleccionar texto de la terminal se usa `Mayús`+arrastrar.
 Se desactiva con `"raton": false` en la configuración.
+
+## La primera vez: cuentas y preferencias
+
+La primera vez que abres `cses` sale su pantalla de configuración (luego, con `Ctrl+K`
+o `cses config`). Ahí inicias sesión una vez en cada una de tus cuentas de Claude, con
+`claude auth login`, y eliges la cuenta por defecto, el idioma, el panel de cuentas, el
+ratón, las carpetas raíz y las reglas por carpeta. Avisa si dos cuentas tienen el mismo
+email. Todo se guarda al momento.
 
 ## Varias cuentas
 
@@ -183,7 +193,8 @@ Se quita con `"panelCuentas": false`, o se pone con una sola cuenta con `true`.
 
 ## Configuración
 
-`~/.cses/config.json` (opcional; también vale con las claves en inglés):
+`~/.cses/config.json`, que escribe la pantalla de configuración (también se puede
+editar a mano; vale con las claves en inglés):
 
 ```json
 {
