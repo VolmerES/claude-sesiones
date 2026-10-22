@@ -53,8 +53,8 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.2",
     "@types/react": "^18.2.48",
-    "@typescript-eslint/eslint-plugin": "^8.59.2",
-    "@typescript-eslint/parser": "^8.59.2",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
+    "@typescript-eslint/parser": "^8.71.2",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -63,6 +63,6 @@
     "ts-jest": "^29.4.9",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.71.2"
   }
 }
