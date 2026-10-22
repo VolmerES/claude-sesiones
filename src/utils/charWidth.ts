@@ -1,3 +1,14 @@
+// Emoji_Presentation=Yes between U+2000 and U+2BFF (Unicode emoji-data.txt)
+const EMOJI_PRESENTATION_BMP: Array<[number, number]> = [
+  [0x231A, 0x231B], [0x23E9, 0x23EC], [0x23F0, 0x23F0], [0x23F3, 0x23F3], [0x25FD, 0x25FE],
+  [0x2614, 0x2615], [0x2648, 0x2653], [0x267F, 0x267F], [0x2693, 0x2693], [0x26A1, 0x26A1],
+  [0x26AA, 0x26AB], [0x26BD, 0x26BE], [0x26C4, 0x26C5], [0x26CE, 0x26CE], [0x26D4, 0x26D4],
+  [0x26EA, 0x26EA], [0x26F2, 0x26F3], [0x26F5, 0x26F5], [0x26FA, 0x26FA], [0x26FD, 0x26FD],
+  [0x2705, 0x2705], [0x270A, 0x270B], [0x2728, 0x2728], [0x274C, 0x274C], [0x274E, 0x274E],
+  [0x2753, 0x2755], [0x2757, 0x2757], [0x2795, 0x2797], [0x27B0, 0x27B0], [0x27BF, 0x27BF],
+  [0x2B1B, 0x2B1C], [0x2B50, 0x2B50], [0x2B55, 0x2B55],
+];
+
 export function getCharWidth(char: string): number {
   if (!char || char.length === 0) return 0;
   
@@ -26,15 +37,24 @@ export function getCharWidth(char: string): number {
     return 0; // Skip orphaned low surrogates
   }
   
+  // Variation selectors and zero-width joiners take no space
+  if ((code >= 0xFE00 && code <= 0xFE0F) || (code >= 0x200B && code <= 0x200D)) {
+    return 0;
+  }
+
+  // A symbol followed by U+FE0F is drawn as an emoji
+  if (char.length > 1 && char.charCodeAt(1) === 0xFE0F) {
+    return 2;
+  }
+
+  // Symbols in the BMP (★ ● ▸ → ☀ …) are one column wide in terminals, except the
+  // ones Unicode draws as emoji by default (Emoji_Presentation)
+  if (code >= 0x2000 && code <= 0x2BFF) {
+    return EMOJI_PRESENTATION_BMP.some(([from, to]) => code >= from && code <= to) ? 2 : 1;
+  }
+
   // Emoji blocks (single code point emojis)
-  if ((code >= 0x2600 && code <= 0x27BF) ||     // Miscellaneous Symbols and Dingbats
-      (code >= 0x2300 && code <= 0x23FF) ||     // Miscellaneous Technical
-      (code >= 0x2B00 && code <= 0x2BFF) ||     // Miscellaneous Symbols and Arrows
-      (code >= 0x2100 && code <= 0x214F) ||     // Letterlike Symbols
-      (code >= 0x2190 && code <= 0x21FF) ||     // Arrows
-      (code >= 0x25A0 && code <= 0x25FF) ||     // Geometric Shapes
-      (code >= 0x2700 && code <= 0x27BF) ||     // Dingbats
-      (code >= 0x1F300 && code <= 0x1F5FF) ||   // Miscellaneous Symbols and Pictographs
+  if ((code >= 0x1F300 && code <= 0x1F5FF) ||   // Miscellaneous Symbols and Pictographs
       (code >= 0x1F600 && code <= 0x1F64F) ||   // Emoticons
       (code >= 0x1F680 && code <= 0x1F6FF) ||   // Transport and Map Symbols
       (code >= 0x1F700 && code <= 0x1F77F) ||   // Alchemical Symbols

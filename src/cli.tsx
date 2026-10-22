@@ -4,133 +4,176 @@ import { render } from 'ink';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import App from './App.js';
+import App, { CONVS, FOLDERS } from './App.js';
+import Panel from './Panel.js';
+import { accountLabel, getAccounts } from './core/accounts.js';
+import { createAccount } from './core/accountAdmin.js';
+import { loadConfig } from './core/config.js';
+import { titleOf, updateIndex, visibleSessions } from './core/indexer.js';
+import { runningSessions } from './core/running.js';
+import type { LaunchRequest } from './core/launcher.js';
+import { runHere } from './core/launcher.js';
+import { decodeSpec, runWithPanel } from './core/supervisor.js';
+import { shortDate } from './core/format.js';
+import { HOME, isInside, shortPath } from './core/paths.js';
+import { setLang, t } from './i18n.js';
+import { FilteredInput } from './ui/input.js';
+import { fit, fitLeft } from './ui/text.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Cada subcomando se puede escribir en castellano o en inglés
+const SUBCOMMANDS: Record<string, string> = {
+  carpetas: 'carpetas', folders: 'carpetas',
+  lista: 'lista', list: 'lista',
+  cuentas: 'cuentas', accounts: 'cuentas',
+  'cuenta-nueva': 'cuenta-nueva', 'new-account': 'cuenta-nueva',
+  login: 'login',
+  // Internos: los usa cses para abrir el panel de cuentas y las pestañas nuevas
+  _panel: '_panel',
+  _run: '_run',
+};
 
-// Get command line arguments (excluding node and script path)
-const args = process.argv.slice(2);
+const config = loadConfig();
+if (config.idioma) setLang(config.idioma);
 
-// Check if '.' is present as a standalone argument - indicates current directory filtering
-const currentDirOnly = args.includes('.');
-let filteredArgs = args.filter(arg => arg !== '.');
+const argv = process.argv.slice(2);
+const dashdash = argv.indexOf('--');
+const own = dashdash === -1 ? argv : argv.slice(0, dashdash);
+const passthrough = dashdash === -1 ? [] : argv.slice(dashdash + 1);
 
-// Parse --hide option
-let hideOptions: string[] = [];
-const hideIndex = filteredArgs.findIndex(arg => arg === '--hide');
-if (hideIndex !== -1) {
-  // Valid hide options
-  const validHideOptions = ['tool', 'thinking', 'user', 'assistant'];
-  
-  // Collect all arguments after --hide until the next option or end
-  let i = hideIndex + 1;
-  let argCount = 0;
-  while (i < filteredArgs.length && !filteredArgs[i].startsWith('-')) {
-    const arg = filteredArgs[i];
-    // Only add valid hide options
-    if (validHideOptions.includes(arg)) {
-      hideOptions.push(arg);
-      argCount++;
-      i++;
-    } else {
-      // Stop collecting if we hit an invalid hide option
-      // This argument might be meant for claude
-      break;
+if (own.includes('-h') || own.includes('--help')) {
+  console.log(t('help'));
+  process.exit(0);
+}
+if (own.includes('-v') || own.includes('--version')) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  console.log(JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf-8')).version);
+  process.exit(0);
+}
+
+// El subcomando, si lo hay, va el primero; «.» puede ir en cualquier sitio
+const firstArg = own.find(a => a !== '.');
+const command = firstArg && firstArg in SUBCOMMANDS ? SUBCOMMANDS[firstArg] : null;
+const rest = own.filter(a => a !== '.');
+if (command && firstArg) rest.splice(rest.indexOf(firstArg), 1);
+const currentDirOnly = own.includes('.');
+const takesArgs = command === 'lista' || command === 'cuenta-nueva' || command === 'login' || command === '_panel' || command === '_run';
+const commandArgs = takesArgs ? rest.filter(a => !a.startsWith('-')) : [];
+// Todo lo demás es para claude (como hacía ccresume), con sus valores: «--model opus»
+const claudeArgs = [...(takesArgs ? rest.filter(a => a.startsWith('-')) : rest), ...passthrough];
+
+// Pantalla completa para Ink, con el ratón aparte; al terminar deja la terminal como estaba
+async function fullScreen(build: (mouse: FilteredInput['mouse'] | null) => React.ReactElement): Promise<void> {
+  const input = new FilteredInput(process.stdin);
+  const withMouse = config.raton !== false;
+  const restoreTerminal = () => {
+    input.disableMouse();
+    process.stdout.write('\x1b[?1049l\x1b[?25h');
+  };
+  // Pantalla alternativa: al salir, la terminal queda como estaba
+  process.stdout.write('\x1b[?1049h\x1b[H\x1b[?25l');
+  if (withMouse) input.enableMouse();
+  process.on('exit', restoreTerminal);
+  const app = render(build(withMouse ? input.mouse : null), { exitOnCtrlC: false, stdin: input as unknown as NodeJS.ReadStream });
+  await app.waitUntilExit();
+  app.cleanup();
+  restoreTerminal();
+  process.off('exit', restoreTerminal);
+  // Que cses suelte la entrada antes de dársela a claude
+  if (process.stdin.isTTY) process.stdin.setRawMode(false);
+  input.dispose();
+}
+
+async function main(): Promise<number> {
+  if (command === '_panel') {
+    if (!commandArgs[0] || !process.stdin.isTTY) return 2;
+    await fullScreen(mouse => <Panel id={commandArgs[0]} mouse={mouse} />);
+    return 0;
+  }
+
+  if (command === '_run') {
+    const req = commandArgs[0] ? decodeSpec(commandArgs[0]) : null;
+    if (!req) return 2;
+    return runWithPanel(req, getAccounts());
+  }
+
+  if (command === 'cuentas') {
+    const accounts = getAccounts();
+    for (const a of accounts) {
+      const shared = accounts.filter(b => b !== a && b.projectsReal && b.projectsReal === a.projectsReal).map(b => b.nombre);
+      console.log(`${a.conSesion ? '●' : '○'} ${accountLabel(a)}`);
+      console.log(`    ${a.dir}${shared.length ? `   (${t('cliShared', { names: shared.join(', ') })})` : ''}`);
+    }
+    return 0;
+  }
+
+  if (command === 'cuenta-nueva') {
+    const nombre = commandArgs[0];
+    if (!nombre) {
+      console.error(t('cliNewAccountUsage'));
+      return 2;
+    }
+    try {
+      for (const l of createAccount(nombre)) console.log(l);
+      console.log(`\n${t('cliNewAccountNext', { name: nombre })}`);
+      return 0;
+    } catch (err) {
+      console.error(`cses: ${(err as Error).message}`);
+      return 1;
     }
   }
-  
-  // If no arguments provided, use default: tool and thinking
-  if (hideOptions.length === 0) {
-    hideOptions = ['tool', 'thinking'];
+
+  if (command === 'login') {
+    const account = getAccounts().find(a => a.nombre === commandArgs[0]);
+    if (!account) {
+      console.error(t('cliNoAccount', { name: commandArgs[0] ?? '' }));
+      return 2;
+    }
+    console.log(`${t('cliLogin', { name: account.nombre, dir: account.dir })}\n`);
+    return runHere({ cwd: HOME, account, extraArgs: claudeArgs, titulo: 'login' });
   }
-  
-  // Remove --hide and its arguments from filteredArgs
-  filteredArgs = [
-    ...filteredArgs.slice(0, hideIndex),
-    ...filteredArgs.slice(hideIndex + 1 + argCount)
-  ];
+
+  if (command === 'lista') {
+    const n = Number(commandArgs[0] ?? 20) || 20;
+    const accounts = getAccounts();
+    const sessions = visibleSessions(await updateIndex(accounts))
+      .filter(s => !currentDirOnly || (s.cwd && isInside(s.cwd, process.cwd())));
+    const running = runningSessions(accounts);
+    const width = process.stdout.columns || 120;
+    const titleW = Math.max(20, width - 8 - 30 - 12);
+    for (const s of sessions.slice(0, n)) {
+      console.log(`${running.has(s.id) ? '●' : ' '} ${fit(shortDate(s.mtime), 9, 'right')}  ${fitLeft(shortPath(s.cwd ?? ''), 28)}  ${fit(titleOf(s), titleW)}  ${s.id.slice(0, 8)}`);
+    }
+    return 0;
+  }
+
+  // ── Interfaz ─────────────────────────────────────────────────────────
+  if (!process.stdin.isTTY) {
+    console.error(t('cliNeedsTty'));
+    return 2;
+  }
+  let launchRequest: LaunchRequest | null = null;
+  await fullScreen(mouse => (
+    <App
+      extraArgs={claudeArgs}
+      initialFolder={currentDirOnly ? process.cwd() : null}
+      initialFocus={command === 'carpetas' ? FOLDERS : CONVS}
+      mouse={mouse}
+      onLaunch={req => {
+        launchRequest = req;
+      }}
+    />
+  ));
+
+  const req = launchRequest as LaunchRequest | null;
+  if (!req) return 0;
+  const what = req.sessionId ? (req.fork ? t('cliForking') : t('cliResuming')) : t('cliNewIn');
+  console.log(`\x1b[38;2;217;119;87m✻\x1b[0m ${what} ${req.sessionId ? `«${req.titulo}»` : shortPath(req.cwd)}`);
+  console.log(`\x1b[2m  ${req.cwd} · ${t('cliAccount')} ${req.account.nombre}\x1b[0m\n`);
+  return runWithPanel(req, getAccounts());
 }
 
-// Handle --help
-if (filteredArgs.includes('--help') || filteredArgs.includes('-h')) {
-  console.log(`ccresume - TUI for browsing Claude Code conversations
-
-Usage: ccresume [.] [options]
-
-Options:
-  .                    Filter conversations to current directory only
-  --hide [types...]    Hide specific message types (tool, thinking, user, assistant)
-                       Default: tool thinking (when no types specified)
-  -h, --help           Show this help message
-  -v, --version        Show version number
-
-All other options are passed to claude when resuming a conversation.
-
-Keyboard Controls:
-  ↑/↓           Navigate conversations list
-  ←/→           Navigate between pages
-  j/k           Scroll chat history  
-  Enter         Resume selected conversation
-  n             Start new session in selected directory
-  -             Edit command options for Claude
-  c             Copy session ID
-  q             Quit
-
-Examples:
-  ccresume
-  ccresume .
-  ccresume . --dangerously-skip-permissions
-  ccresume --dangerously-skip-permissions
-
-Configuration:
-  Key bindings can be customized in: ~/.config/ccresume/config.toml
-  See example: https://github.com/sasazame/ccresume/blob/develop/config.toml.example
-  
-  Note: When new features are added that conflict with your custom key bindings,
-  you'll need to either:
-    - Add the new key binding explicitly to your config.toml
-    - Remove/modify the conflicting custom key binding
-  
-For more info: https://github.com/sasazame/ccresume`);
-  process.exit(0);
-}
-
-// Handle --version
-if (filteredArgs.includes('--version') || filteredArgs.includes('-v')) {
-  const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
-  console.log(packageJson.version);
-  process.exit(0);
-}
-
-const claudeArgs = filteredArgs;
-
-// Show Windows-specific notice at startup with pause
-if (process.platform === 'win32') {
-  const { spawn } = await import('child_process');
-  
-  console.log('');
-  console.log('📝 Notice for Windows users: If terminal doesn\'t accept input after Claude Code starts,');
-  console.log('   press ENTER once to activate input.');
-  console.log('   This is a temporary workaround for a known Windows environment issue.');
-  console.log('   For details, see GitHub issue: https://github.com/sasazame/ccresume/issues/32');
-  console.log('');
-  
-  // Use spawn with inherited stdio to ensure proper pause behavior
-  const pause = spawn('cmd.exe', ['/c', 'pause'], { stdio: 'inherit' });
-  
-  // Wait for pause to complete before continuing
-  await new Promise((resolve) => {
-    pause.on('close', resolve);
-  });
-}
-
-// Render the app in fullscreen mode
-const { unmount } = render(<App claudeArgs={claudeArgs} currentDirOnly={currentDirOnly} hideOptions={hideOptions} />, {
-  exitOnCtrlC: true
-});
-
-// Handle graceful exit
-process.on('exit', () => {
-  unmount();
+main().then(code => process.exit(code), err => {
+  process.stdout.write('\x1b[?1000l\x1b[?1006l\x1b[?1049l\x1b[?25h');
+  console.error(err);
+  process.exit(1);
 });

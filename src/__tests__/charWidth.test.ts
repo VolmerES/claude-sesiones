@@ -56,11 +56,21 @@ describe('charWidth', () => {
     });
 
     it('handles various emoji blocks', () => {
-      expect(getCharWidth('☀')).toBe(2); // U+2600
       expect(getCharWidth('⌚')).toBe(2); // U+231A
-      expect(getCharWidth('⬇')).toBe(2); // U+2B07
       expect(getCharWidth('⚡')).toBe(2); // U+26A1
       expect(getCharWidth('✅')).toBe(2); // U+2705
+      expect(getCharWidth('⭐')).toBe(2); // U+2B50
+    });
+
+    it('draws text-presentation symbols one column wide unless followed by U+FE0F', () => {
+      expect(getCharWidth('☀')).toBe(1); // U+2600
+      expect(getCharWidth('☀️')).toBe(2);
+      expect(getCharWidth('⬇')).toBe(1); // U+2B07
+      expect(getCharWidth('★')).toBe(1);
+      expect(getCharWidth('●')).toBe(1);
+      expect(getCharWidth('▸')).toBe(1);
+      expect(getCharWidth('→')).toBe(1);
+      expect(getCharWidth('️')).toBe(0);
     });
 
     it('returns 1 for other Unicode characters', () => {

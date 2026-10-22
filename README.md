@@ -1,278 +1,237 @@
-# ccresume
+# claude-sesiones — every Claude Code conversation, one terminal
 
-A character user interface (CUI) tool for browsing and resuming Claude Code conversations.
+**English** · [Español](README.es.md)
 
-![ccresume screenshot](docs/images/demo-screenshot.png)
+A terminal browser for your Claude Code conversations across **every folder and every
+account**, like the claude.ai sidebar but in the CLI. Pick one and it reopens in its
+own folder, with its own account — no more remembering where you were.
 
-**⚠️ DISCLAIMER: This is an unofficial third-party tool not affiliated with or endorsed by Anthropic. Use at your own risk.**
-
-## Overview
-
-ccresume provides an interactive terminal interface to browse and manage your Claude Code conversation history. It reads conversation data from your local Claude Code configuration and displays them in an easy-to-navigate format.
-
-### Key Features
-
-- 📋 Browse all Claude Code conversations across projects
-- 🔍 View detailed conversation information
-- 📎 Copy session IDs to clipboard
-- 🚀 Start new Claude sessions in selected project directories
-- 📁 Filter conversations to current directory with `.` argument
-- 🎭 Hide specific message types for cleaner display
-- ⚙️ Edit Claude command options interactively before starting sessions
-- 🔄 Toggle full conversation view to see complete message history
-
-![ccresume demo](docs/images/demo.gif)
-
-## Installation
-
-### Via npx (Recommended)
-
-```bash
-npx @sasazame/ccresume@latest
+```
+ ✻ cses                                                                                 account ▸ work · you@company.com ·auto
+  ⌕ ▏type to search conversations
+╭────────────────────────────╮╭────────────────────────────────────────────────╮╭────────────────────────────────────────────╮
+│ Folders                    ││ All · 41                                       ││ Preview                                    │
+│ ▌ All                   41 ││ Today                                          ││ Database migration                         │
+│  ★ Favorites               ││ ▌● Database migration        api-pagos   12:31 ││ proyectos/api-pagos  ⎇ main                │
+│    api-pagos             8 ││    New landing page          web-tienda  11:22 ││ Oct 20 20:15 → today 12:31 · 36 messages   │
+│  Folders                   ││ Yesterday                                      ││ ● Open now in another terminal             │
+│  ▾ proyectos            33 ││    Android login bug         app-movil    yest ││ account ▸ work · you@company.com           │
+│    ▸ api-pagos           8 ││    Quarterly report          clientes     yest ││ ────────────────────────────────────────── │
+│    ▸ web-tienda         12 ││ Previous 7 days                                ││ ❯ You  today 12:20                         │
+│      app-movil           5 ││    Image cache               web-tienda    Mon ││   what if we do it in batches?             │
+│  ▸ clientes              8 ││    Integration tests         api-pagos     Sun ││ ✻ Claude  today 12:21                      │
+╰────────────────────────────╯╰────────────────────────────────────────────────╯╰────────────────────────────────────────────╯
+ ↵ open  ^T tab  ^N new  ^F fork  ^E favorite  ^G its folder  ^A account  esc back
 ```
 
-### Global Installation
+## Why
+
+`claude --resume` is tied to the folder you started the conversation in. With many
+projects (and more than one account) finding yesterday's conversation means guessing
+the folder first. `cses` reads the history Claude Code already keeps on disk and lets
+you browse all of it at once.
+
+## Features
+
+- **Three columns**: folders | conversations | preview. `←` `→` move between them.
+- **Folder tree** with conversation counts. Expand any folder on disk, not only the
+  ones with history, and start a new conversation there.
+- **Type to search** in the focused column, ignoring case and accents.
+- **Favorites** (`Ctrl+E`) for conversations and folders, always on top.
+- **Mouse**: click to select, double-click to open or expand, wheel to scroll.
+- **Back with `esc`**: returns to where you were before the last jump.
+- **Several accounts** (`~/.claude-*` config dirs): switch with `Ctrl+A`, or set rules
+  per folder. Open conversations in new Windows Terminal or tmux tabs (`Ctrl+T`) and
+  run several accounts at the same time.
+- **Knows what's open**: `●` marks conversations running in another terminal, and
+  `cses` asks before opening one twice (or opens a fork).
+- **Fast**: an incremental index reads only what changed (2.5 GB of history in ~3 s
+  the first time, ~35 ms after that).
+- **English and Spanish**, picked from your system language.
+
+## Install
+
+Needs Node.js 22 or newer and Claude Code.
 
 ```bash
-npm install -g @sasazame/ccresume
+npm install -g claude-sesiones      # or: pnpm add -g / yarn global add / bun add -g
+cses                                # or the long name: claude-sesiones
+```
+
+From source:
+
+```bash
+git clone https://github.com/VolmerES/claude-sesiones.git
+cd claude-sesiones
+npm install && npm run build && npm link
+```
+
+### Stay in the conversation's folder after quitting
+
+A program can't change its parent shell's directory, so wrap `cses` in a function.
+Bash or zsh (Git Bash included):
+
+```bash
+cses() {
+  local f rc d
+  f="$(mktemp)"
+  CSES_CD="$(command -v cygpath >/dev/null && cygpath -w "$f" || echo "$f")" command cses "$@"
+  rc=$?
+  d="$(cat "$f" 2>/dev/null)"; rm -f "$f"
+  [ -n "$d" ] && command -v cygpath >/dev/null && d="$(cygpath -u "$d")"
+  [ -n "$d" ] && [ -d "$d" ] && cd "$d"
+  return $rc
+}
+```
+
+PowerShell:
+
+```powershell
+function cses {
+  $f = New-TemporaryFile
+  $env:CSES_CD = $f.FullName
+  try { & (Get-Command cses -CommandType Application | Select-Object -First 1) @args }
+  finally {
+    Remove-Item Env:CSES_CD
+    $d = Get-Content $f -ErrorAction SilentlyContinue
+    Remove-Item $f
+    if ($d -and (Test-Path $d)) { Set-Location $d }
+  }
+}
 ```
 
 ## Usage
 
-Run the command in your terminal:
-
-```bash
-ccresume
+```
+cses                     open the browser
+cses .                   start in the current folder
+cses folders             start in the folder column
+cses list [N]            the last N conversations, no UI
+cses accounts            detected accounts and whether they share history
+cses new-account NAME    create ~/.claude-NAME sharing history and settings
+cses login NAME          open claude with that account to log in
 ```
 
-Or if using npx:
+Anything that isn't a `cses` option is passed to `claude`: `cses --model opus`, or
+`cses -- …` to pass everything through. The Spanish names (`lista`, `cuentas`,
+`cuenta-nueva`, `carpetas`) work too.
 
-```bash
-npx @sasazame/ccresume@latest
-```
+| Key | Folders | Conversations | Preview |
+|---|---|---|---|
+| typing | search folders | search conversations | |
+| `↑` `↓` `PgUp` `PgDn` | move | move | scroll |
+| `→` | expand / next column | preview | |
+| `←` | collapse / parent | folders | conversations |
+| `↵` | show its conversations | open here | open here |
+| `Ctrl+T` | new conversation in a tab | open in a new tab | |
+| `Ctrl+N` | new conversation here | new conversation in its folder | |
+| `Ctrl+F` | | open a fork (`--fork-session`) | |
+| `Ctrl+E` | favorite folder | favorite conversation | |
+| `Ctrl+G` | | go to its folder | |
+| `Ctrl+A` | switch account (cycles back to automatic) | | |
+| `Ctrl+Y` | | copy the session id | |
+| `Ctrl+R` | refresh | refresh | refresh |
+| `esc` | clear search · back · quit | | |
+| `Tab` | next column | | |
 
-### Command Line Options
+With mouse reporting on, select text in the terminal with `Shift`+drag. Turn the
+mouse off with `"mouse": false` in the config.
 
-#### ccresume Options
+## Several accounts
 
-```bash
-# Hide specific message types
-ccresume --hide              # Default: hides tool and thinking messages
-ccresume --hide tool         # Hide only tool messages
-ccresume --hide thinking      # Hide only thinking messages
-ccresume --hide user         # Hide only user messages
-ccresume --hide assistant    # Hide only assistant messages
-ccresume --hide tool thinking user  # Hide multiple types
+Claude Code keeps each account in its own config directory (`CLAUDE_CONFIG_DIR`).
+`cses` detects `~/.claude` (the "principal" one) and every `~/.claude-NAME`, and launches
+`claude` with the right variable, so conversations from different accounts can run side
+by side, one per tab.
 
-# Filter to current directory
-ccresume .
+`cses new-account NAME` creates the directory linking `projects/`, `skills/`, `plugins/`…
+and the settings to the main one: history is shared, any conversation can be resumed
+with any account, and only the credentials are separate. If an account doesn't share
+`projects/`, `cses` opens its conversations with it and tells you so.
 
-# Show help
-ccresume --help
-ccresume -h
+### Accounts panel: switch accounts without leaving the chat
 
-# Show version
-ccresume --version
-ccresume -v
-```
-
-#### Passing Options to Claude
-
-All unrecognized command-line arguments are passed directly to the `claude` command when resuming a conversation.
-
-```bash
-# Pass options to claude
-ccresume --dangerously-skip-permissions
-
-# Multiple options
-ccresume --model opus --dangerously-skip-permissions
-
-# Combine ccresume and claude options
-ccresume --hide tool --model opus 
-ccresume . --hide --dangerously-skip-permissions
-```
-
-**⚠️ Warning**: Since unrecognized arguments are passed to claude, avoid using options that conflict with ccresume's functionality:
-- Don't use options like `--resume` or something like that changes claude's interactive behavior
-
-## Requirements
-
-- **Node.js** 22 / 24 (LTS)
-- **Claude Code** - Must be installed and configured
-- **Operating System** - Works on macOS, Linux, and Windows (both native & WSL)
-
-## Command Editor
-
-Press `-` to open the command editor, where you can configure Claude CLI options before starting or resuming a session. The editor provides:
-
-- **Autocomplete suggestions** - Type `-` to see matching Claude options
-- **Official help text** - View all available Claude CLI options
-- **Interactive editing** - Use arrow keys, Tab for autocomplete, Enter to confirm
-
-The configured options will be passed to Claude when you start a new session (`n`) or resume a conversation (`Enter`).
-
-**Note**: The options list is based on Claude's help text at a specific point in time. Please refer to `claude --help` for the latest available options. Some options like `-r`, `-c`, `-h` may interfere with ccresume's functionality.
-
-## Keyboard Controls
-
-### Default Key Bindings
-
-| Action | Keys |
-|--------|------|
-| Quit | `q` |
-| Select Previous | `↑` |
-| Select Next | `↓` |
-| Confirm/Resume | `Enter` |
-| Start New Session | `n` |
-| Edit Command Options | `-` |
-| Copy Session ID | `c` |
-| Scroll Up | `k` |
-| Scroll Down | `j` |
-| Page Up | `u`, `PageUp` |
-| Page Down | `d`, `PageDown` |
-| Scroll to Top | `g` |
-| Scroll to Bottom | `G` |
-| Next Page | `→`|
-| Previous Page | `←` |
-| Toggle Full View | `f` |
-
-### Custom Key Bindings
-
-You can customize key bindings by creating a configuration file at `~/.config/ccresume/config.toml`:
-
-```toml
-[keybindings]
-quit = ["q", "ctrl+c", "esc"]
-selectPrevious = ["up", "k"]
-selectNext = ["down", "j"]
-confirm = ["enter", "l"]
-copySessionId = ["y"]
-scrollUp = ["u", "ctrl+u"]
-scrollDown = ["d", "ctrl+d"]
-scrollPageUp = ["b", "ctrl+b"]
-scrollPageDown = ["f", "ctrl+f"]
-scrollTop = ["g"]
-scrollBottom = ["shift+g"]
-pageNext = ["right", "n"]
-pagePrevious = ["left", "p"]
-startNewSession = ["n"]
-openCommandEditor = ["-"]
-toggleFullView = ["f"]
-```
-
-See `config.toml.example` in the repository for a complete example.
-
-## Development
-
-### Setup
-
-Install mise if it is not already available in your environment.
-
-#### Install mise
-
-```bash
-curl https://mise.run | sh
-```
-
-See the official getting-started guide for platform-specific steps:
-https://mise.jdx.dev/getting-started.html
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ccresume.git
-cd ccresume
-
-# Ensure mise is installed before proceeding
-# (skip if already installed)
-
-# Install tools via mise
-mise install
-
-# Install dependencies and git hooks
-mise run init
-```
-
-### Available Scripts
-
-```bash
-# Run in development mode
-mise run dev
-
-# Build the project
-mise run build
-
-# Run tests
-mise run test
-
-# Run tests in watch mode
-mise run test:watch
-
-# Generate test coverage
-mise run test:coverage
-
-# Run linter
-mise run lint
-
-# Type check
-mise run typecheck
-```
-
-### Local CI
-
-Run the same checks as CI:
-
-```bash
-mise run ci
-```
-
-### Compatibility Checks
-
-Validate against all supported Node LTS versions:
-
-```bash
-mise run ci:matrix
-```
-
-### Project Structure
+When you have more than one account and `cses` runs in Windows Terminal or tmux, opening
+a conversation splits the tab: `claude` on the left and a narrow accounts panel on the
+right.
 
 ```
-ccresume/
-├── src/              # Source code
-│   ├── cli.tsx       # CLI entry point
-│   ├── App.tsx       # Main application component
-│   └── ...           # Other components and utilities
-├── dist/             # Compiled output
-├── tests/            # Test files
-└── package.json      # Project configuration
+╭─ claude ───────────────────────────────────────╮╭─ Accounts ────────────────╮
+│ ✻ You've hit your session limit · resets 6pm   ││ ⚠ Limit reached           │
+│                                                ││ ● work                    │
+│ >                                              ││   you@company.com         │
+│                                                ││   ⚠ limit · back 18:00    │
+│                                                ││                           │
+│                                                ││ ○ personal                │
+│                                                ││   you@gmail.com           │
+│                                                ││                           │
+│                                                ││ + Add account             │
+╰────────────────────────────────────────────────╯╰───────────────────────────╯
 ```
+
+- **Click another account** and the same conversation reopens with it, in the same pane,
+  in a couple of seconds. No `/login`: each account keeps its own login. Claude Code
+  can't change accounts inside a running session, so `cses` restarts it with
+  `--resume`; the conversation is all there, only text you hadn't sent is lost. If
+  Claude is in the middle of an answer, the panel asks first.
+- **Usage limits**: when Claude says you've hit a limit, the panel marks that account
+  with ⚠ and when it comes back, so you know which one to switch to.
+- **+ Add account** creates `~/.claude-NAME` and opens a tab to log in, once.
+
+Turn it off with `"accountsPanel": false`, or on with only one account with `true`.
+
+## Configuration
+
+`~/.cses/config.json` (optional; Spanish keys work too):
+
+```json
+{
+  "roots": ["~/projects", "~/clients"],
+  "defaultAccount": "principal",
+  "rules": [{ "folder": "~/clients", "account": "work" }],
+  "terminal": "wt",
+  "language": "en",
+  "mouse": true
+}
+```
+
+- **`roots`**: always at the top of the tree, even without conversations.
+- **`rules`**: which account to suggest for a folder (the most specific one wins).
+- **`accounts`**: `[{ "name", "dir" }]` instead of auto-detection.
+- **`terminal`**: `wt` (Windows Terminal, the Windows default), `window` or `tmux`.
+- **`language`**: `en` or `es`. Also `CSES_LANG`, then `LANG`, then the system locale.
+- **`accountsPanel`**: the accounts panel next to `claude` (on by default with two or
+  more accounts).
+- `CSES_CLAUDE` (environment variable): path to the `claude` executable, if it isn't the
+  one in your `PATH`.
+
+## How it works and privacy
+
+`cses` only reads files on your machine: the conversation transcripts Claude Code writes
+under `<config dir>/projects/`, and the `sessions/` files that say which ones are open.
+It keeps an index in `~/.cses/indice.json` (safe to delete; it's rebuilt), your
+favorites in `~/.cses/favoritos.json`, the usage limits it has seen in
+`~/.cses/limites.json` and, while a conversation is open, a small file in
+`~/.cses/paneles/` for the accounts panel. Nothing is sent anywhere.
+
+## Status
+
+Developed on Windows 11 with Windows Terminal and Git Bash. It should work on macOS and
+Linux (new tabs need tmux there), but that hasn't been tested yet: reports and PRs are
+very welcome.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Issues and pull requests are welcome, in English or Spanish. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## Credits
+
+A fork of [ccresume](https://github.com/sasazame/ccresume) by sasazame (MIT): it keeps
+its Ink/React base and character-width handling and rewrites the rest.
+
+Not affiliated with Anthropic. "Claude" is a trademark of Anthropic.
 
 ## License
 
-MIT
-
-## Support
-
-For issues and feature requests, please use the [GitHub issue tracker](https://github.com/sasazame/ccresume/issues).
-
-## 🐞 Known Issues
-
-Below are known issues and limitations. Contributions and suggestions are welcome!
-
-| No. | Title | Description | Issue |
-|:---:|:------|:-------------|:-----|
-| 1 | **Incomplete conversation history restoration on resume** | When resuming with ccresume, sometimes, only the tail end of the history is restored. Although the interactive `claude -r` can restore full history. Workaround: use `claude -r` interactively or `claude -c`. | [#2](https://github.com/sasazame/ccresume/issues/2) |
-| 2 | **~~Restore original console state after exiting ccresume~~** | ~~Exiting `ccresume` leaves the chat selection interface visible and hides previous terminal content.~~ **This is fixed in v0.3.1**: Terminal scrollback buffer is now preserved when exiting. | [#3](https://github.com/sasazame/ccresume/issues/3) |
-| 3 | **Resume ordering may be incorrect** | For performance issue, `ccresume` sorts logs by file system timestamps (not chat content), so display order may not match actual chronology after migration. Workaround: preserve file timestamps. | – |
-| 4 | **Windows native terminal limitations** | On Windows native terminals, interactive features may have limited functionality due to terminal input handling differences. Temporarily, in the Windows native environment, a warning message will be displayed before startup. | [#32](https://github.com/sasazame/ccresume/issues/32) |
-
-Remember: This is an unofficial tool. For official Claude Code support, please refer to Anthropic's documentation.
+[MIT](LICENSE)

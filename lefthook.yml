@@ -1,11 +1,11 @@
 pre-commit:
   commands:
     lint:
-      run: mise run lint
+      run: npm run lint
     typecheck:
-      run: mise run typecheck
+      run: npm run typecheck
 
 pre-push:
   commands:
-    ci:
-      run: mise run ci
+    test:
+      run: npm test

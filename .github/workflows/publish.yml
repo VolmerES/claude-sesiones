@@ -1,5 +1,10 @@
 name: Publish
 
+# Publica en npm al publicar una release de GitHub (etiqueta vX.Y.Z), con trusted
+# publishing: sin tokens, y npm enseña de qué commit sale cada versión.
+# La primera versión se publica a mano; después se da de alta este flujo en
+# npmjs.com → claude-sesiones → Settings → Trusted publishing.
+
 on:
   release:
     types: [published]
@@ -11,13 +16,11 @@ permissions:
 
 jobs:
   publish:
-    if: github.repository == 'sasazame/ccresume'
+    if: github.repository == 'VolmerES/claude-sesiones'
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v6
@@ -25,6 +28,10 @@ jobs:
         node-version: 24.x
         registry-url: https://registry.npmjs.org
         package-manager-cache: false
+
+    # Trusted publishing necesita npm 11.5.1 o posterior
+    - name: Update npm
+      run: npm install -g npm@11
 
     - name: Install dependencies
       run: npm ci
@@ -48,4 +55,4 @@ jobs:
         fi
 
     - name: Publish to npm
-      run: npm publish
+      run: npm publish --access public

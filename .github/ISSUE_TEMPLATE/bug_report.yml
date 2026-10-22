@@ -1,0 +1,39 @@
+name: Bug report / Fallo
+description: Something doesn't work as expected / Algo no funciona como debería
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! English or Spanish, whatever you prefer.
+        **Don't paste private conversation content**: blur titles and paths in screenshots.
+        / ¡Gracias! En inglés o en castellano. **No pegues contenido privado de tus conversaciones.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / Qué pasó
+      description: What you did, what you expected and what you got / Qué hiciste, qué esperabas y qué salió
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Pasos para reproducirlo
+      placeholder: |
+        1. cses
+        2. ← ↓ →
+        3. …
+  - type: input
+    id: versions
+    attributes:
+      label: Versions / Versiones
+      description: "`cses --version` and `claude --version`"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS, terminal and shell / Sistema, terminal y shell
+      placeholder: Windows 11, Windows Terminal, Git Bash
+    validations:
+      required: true

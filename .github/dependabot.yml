@@ -8,8 +8,6 @@ updates:
       day: "monday"
       time: "04:00"
     open-pull-requests-limit: 3
-    reviewers:
-      - "sasazame"
     labels:
       - "dependencies"
       - "npm"
@@ -51,8 +49,6 @@ updates:
       interval: "monthly"
       day: "monday"
       time: "04:00"
-    reviewers:
-      - "sasazame"
     labels:
       - "dependencies"
       - "github-actions"

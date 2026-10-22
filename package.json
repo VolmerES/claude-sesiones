@@ -1,47 +1,51 @@
 {
-  "name": "@sasazame/ccresume",
-  "version": "2.0.0",
-  "description": "A TUI tool for browsing and resuming Claude Code conversations",
+  "name": "claude-sesiones",
+  "version": "0.1.0",
+  "description": "Browse and resume Claude Code conversations from every folder and every account, in the terminal",
   "type": "module",
   "bin": {
-    "ccresume": "./dist/cli.js"
+    "cses": "./dist/cli.js",
+    "claude-sesiones": "./dist/cli.js"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.es.md"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
     "dev": "tsx src/cli.tsx",
     "prepare": "npm run build",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
-    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "keywords": [
     "claude",
     "claude-code",
     "cli",
     "tui",
-    "terminal"
+    "terminal",
+    "sessions",
+    "resume",
+    "ink"
   ],
-  "author": "ccresume contributors",
+  "author": "VolmerES (fork of ccresume by sasazame)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sasazame/ccresume.git"
+    "url": "git+https://github.com/VolmerES/claude-sesiones.git"
   },
+  "homepage": "https://github.com/VolmerES/claude-sesiones#readme",
   "bugs": {
-    "url": "https://github.com/sasazame/ccresume/issues"
+    "url": "https://github.com/VolmerES/claude-sesiones/issues"
   },
-  "homepage": "https://github.com/sasazame/ccresume#readme",
-  "publishConfig": {
-    "access": "public"
+  "engines": {
+    "node": ">=22"
   },
   "dependencies": {
-    "@iarna/toml": "^2.2.5",
     "clipboardy": "^5.3.1",
-    "date-fns": "^4.1.0",
     "ink": "^5.2.1",
     "react": "^18.3.1"
   },
@@ -60,11 +64,5 @@
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.2"
-  },
-  "engines": {
-    "node": ">=22"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }
