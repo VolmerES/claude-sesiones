@@ -123,6 +123,9 @@ async function main(): Promise<number> {
   }
 
   if (command === '_panel') {
+    const dir = rest.find(a => a.startsWith('--dir='));
+    if (dir) process.env.CSES_DIR = dir.slice('--dir='.length);
+    if (rest.includes('--debug')) process.env.CSES_DEBUG = '1';
     if (!commandArgs[0] || !process.stdin.isTTY) return 2;
     await fullScreen(mouse => <Panel id={commandArgs[0]} mouse={mouse} />);
     return 0;

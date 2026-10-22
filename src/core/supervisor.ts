@@ -7,7 +7,8 @@ import type { LaunchRequest } from './launcher.js';
 import { claudeArgs, rememberCwd, resolveClaude, shQuote, which } from './launcher.js';
 import type { PanelState } from './panelLink.js';
 import { newPanelId, prunePanels, removePanel, takeOrder, writeState } from './panelLink.js';
-import { IS_WINDOWS } from './paths.js';
+import { IS_WINDOWS, csesDir } from './paths.js';
+import { debug } from './debug.js';
 import { alive, sessionOfPid } from './running.js';
 import { t } from '../i18n.js';
 
@@ -51,14 +52,21 @@ function splitter(): 'wt' | 'tmux' | null {
 }
 
 // Por defecto, en cuanto hay más de una cuenta
+const panelAsked = (accounts: Account[]) => loadConfig().panelCuentas ?? accounts.length > 1;
+
 export function panelWanted(accounts: Account[]): boolean {
-  const config = loadConfig().panelCuentas;
-  return (config ?? accounts.length > 1) && splitter() !== null;
+  return panelAsked(accounts) && splitter() !== null;
+}
+
+// El panel lo lanza Windows Terminal (o tmux) con su propio entorno, no con el de cses:
+// lo que el panel necesita del entorno va en los argumentos
+export function panelArgs(id: string): string[] {
+  return ['_panel', id, `--dir=${csesDir()}`, ...(process.env.CSES_DEBUG ? ['--debug'] : [])];
 }
 
 // Abre el panel de cuentas a la derecha sin quitarle el foco a claude
 export function openPanel(id: string, cwd: string): boolean {
-  const cmd = csesCommand(['_panel', id]);
+  const cmd = csesCommand(panelArgs(id));
   try {
     if (splitter() === 'wt') {
       const cols = process.stdout.columns || 120;
@@ -135,6 +143,7 @@ export async function runSupervised(first: LaunchRequest, id = newPanelId()): Pr
         historial,
       };
       writeState(id, state);
+      debug('supervisor', 'claude lanzado', { id, cuenta: state.cuenta, claudePid: state.claudePid, sessionId: state.sessionId });
 
       let next: Account | null = null;
       const current = req.account;
@@ -153,6 +162,7 @@ export async function runSupervised(first: LaunchRequest, id = newPanelId()): Pr
         child.on('close', c => done(c ?? 0));
       });
       clearInterval(timer);
+      debug('supervisor', 'claude terminó', { code, cambiarA: (next as Account | null)?.nombre ?? null });
 
       const target = next as Account | null;
       if (!target) return code;
@@ -170,8 +180,17 @@ export async function runSupervised(first: LaunchRequest, id = newPanelId()): Pr
 
 // Abre claude aquí, con el panel de cuentas al lado si se puede
 export function runWithPanel(req: LaunchRequest, accounts: Account[]): Promise<number> {
-  if (!panelWanted(accounts)) return runSupervised(req);
+  const where = splitter();
+  debug('supervisor', 'entorno', { pedido: panelAsked(accounts), donde: where, WT_SESSION: Boolean(process.env.WT_SESSION), TMUX: Boolean(process.env.TMUX) });
+  if (!panelWanted(accounts)) {
+    // Que no parezca que el panel falla: si toca y no se puede, se dice
+    if (panelAsked(accounts) && loadConfig().panelCuentas !== false) {
+      process.stdout.write(`\x1b[2m  ${t('panelUnavailable')}\x1b[0m\n\n`);
+    }
+    return runSupervised(req);
+  }
   const id = newPanelId();
-  openPanel(id, req.cwd);
+  const opened = openPanel(id, req.cwd);
+  debug('supervisor', 'panel', { id, opened, cmd: csesCommand(panelArgs(id)) });
   return runSupervised(req, id);
 }

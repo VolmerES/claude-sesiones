@@ -156,7 +156,8 @@ const es = {
   panelSwitching: 'Cambiando a {name}…',
   panelNotShared: '{name} no comparte el historial: no puede seguir este chat',
   panelWaiting: 'Esperando a claude…',
-  panelKeys: '↑↓ ↵ · clic · n nueva',
+  panelKeys: '1-9 · clic · n nueva',
+  panelUnavailable: 'El panel de cuentas va al lado de claude en Windows Terminal o tmux: abre cses desde ahí (o con ^T) para tenerlo.',
 
   adminBadName: 'El nombre solo puede llevar letras, números, «-» y «_»',
   adminExists: 'Ya existe {dir}',
@@ -349,7 +350,8 @@ const en: Messages = {
   panelSwitching: 'Switching to {name}…',
   panelNotShared: "{name} doesn't share the history: it can't continue this chat",
   panelWaiting: 'Waiting for claude…',
-  panelKeys: '↑↓ ↵ · click · n new',
+  panelKeys: '1-9 · click · n new',
+  panelUnavailable: 'The accounts panel sits next to claude in Windows Terminal or tmux: run cses from there (or use ^T) to get it.',
 
   adminBadName: 'The name can only contain letters, digits, "-" and "_"',
   adminExists: '{dir} already exists',

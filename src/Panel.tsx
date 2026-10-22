@@ -4,6 +4,7 @@ import type { EventEmitter } from 'events';
 import type { Account } from './core/accounts.js';
 import { getAccounts } from './core/accounts.js';
 import { createAccount } from './core/accountAdmin.js';
+import { debug } from './core/debug.js';
 import { futureTime } from './core/format.js';
 import { runInNewTab } from './core/launcher.js';
 import { focusClaude } from './core/supervisor.js';
@@ -55,6 +56,7 @@ function snapshot(id: string): Snapshot {
     // El aviso es de la cuenta que había cuando se escribió, que puede no ser la de ahora
     if (hit) saveLimit(accountAt(state.historial, hit.ts) ?? state.cuenta, hit);
   }
+  debug('panel', { id, state: state ? { cuenta: state.cuenta, claudePid: state.claudePid, supervisor: state.supervisor } : null, cuentas: accounts.map(a => a.nombre), estado });
   return { state, accounts, limits: loadLimits(), estado };
 }
 
@@ -74,6 +76,7 @@ const Panel: React.FC<PanelProps> = ({ id, mouse }) => {
     const timer = setInterval(() => {
       const next = snapshot(id);
       if (next.state ? !alive(next.state.supervisor) : Date.now() - started > WAIT_MS) {
+        debug('panel', 'me cierro', { hayEstado: Boolean(next.state) });
         exit();
         return;
       }
@@ -166,8 +169,9 @@ const Panel: React.FC<PanelProps> = ({ id, mouse }) => {
       const mark = isCurrent ? '●' : a.conSesion ? '○' : '·';
       push(line(
         { t: isSel ? '▸' : ' ', color: ACCENT },
+        { t: `${accounts.indexOf(a) + 1} `, color: MUTED },
         { t: `${mark} `, color: isCurrent ? ACCENT : MUTED },
-        { t: fit(a.nombre, inner - 1), bold: isCurrent, color: isCurrent ? ACCENT : undefined },
+        { t: fit(a.nombre, inner - 3), bold: isCurrent, color: isCurrent ? ACCENT : undefined },
       ), action);
       push(line({ t: `   ${fit(a.email ?? '', inner).trimEnd()}`, dim: true }), action);
       const hit = limits[a.nombre];
@@ -221,11 +225,14 @@ const Panel: React.FC<PanelProps> = ({ id, mouse }) => {
     else if (key.downArrow) setSel(s => Math.min(selectable.length - 1, s + 1));
     else if (key.return) run(selected);
     else if (input === 'n' || input === '+') run({ kind: 'nueva' });
+    // 1, 2, 3…: la cuenta con ese número, por si el clic no llega
+    else if (/^[1-9]$/.test(input) && accounts[Number(input) - 1]) choose(accounts[Number(input) - 1].nombre);
   });
 
   useEffect(() => {
     if (!mouse) return;
     const onMouse = (ev: MouseEvent) => {
+      debug('panel', 'ratón', ev, actions[ev.y - 1] ?? null);
       if (ev.tipo !== 'clic') return;
       const action = actions[ev.y - 1];
       if (!action) return;
